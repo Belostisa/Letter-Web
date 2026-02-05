@@ -37,7 +37,7 @@ body {
 
 .bg-video video {
   filter:
-    brightness(1.15)
+    brightness(1.50)
     contrast(1.05)
     saturate(1.1);
 
@@ -324,6 +324,120 @@ body {
   letter-spacing: 1px;
 }
 
+/* =========================
+   CRT + CURVATURE OVERLAY (VISIBLE)
+========================= */
+
+/* wrapper does the “curved glass” look */
+.crt-wrap{
+  position: fixed;
+  inset: 0;
+  z-index: 999999;     /* ensure it’s on top of everything */
+  pointer-events: none;
+
+  /* curvature */
+  transform: perspective(650px) translateZ(0) scale(1.04)
+             rotateX(1.35deg) rotateY(-1.35deg);
+
+  /* vignette / rounded mask */
+  border-radius: 28px;
+
+  /* mask edges so it feels like a screen */
+  -webkit-mask-image: radial-gradient(ellipse at center,
+    rgba(0,0,0,1) 58%,
+    rgba(0,0,0,0.55) 76%,
+    rgba(0,0,0,0) 100%
+  );
+  mask-image: radial-gradient(ellipse at center,
+    rgba(0,0,0,1) 58%,
+    rgba(0,0,0,0.55) 76%,
+    rgba(0,0,0,0) 100%
+  );
+
+  /* keeps the overlay clipped */
+  overflow: hidden;
+}
+
+/* actual scanlines + noise + chroma shift */
+.crt{
+  position: absolute;
+  inset: -3%; /* extra so curved edges don’t reveal gaps */
+  opacity: 0.55;        /* stronger so you definitely see it */
+  filter: contrast(1.05) brightness(1.02);
+}
+
+/* scanlines + vertical bands + vignette */
+.crt{
+  background:
+    /* vignette */
+    radial-gradient(circle at center,
+      rgba(0,0,0,0) 55%,
+      rgba(0,0,0,0.28) 100%
+    ),
+    /* scanlines */
+    repeating-linear-gradient(to bottom,
+      rgba(0,0,0,0.28) 0px,
+      rgba(0,0,0,0.28) 1px,
+      rgba(0,0,0,0.06) 2px,
+      rgba(0,0,0,0.06) 4px
+    ),
+    /* faint vertical “phosphor” bands */
+    repeating-linear-gradient(to right,
+      rgba(255,255,255,0.03) 0px,
+      rgba(255,255,255,0.03) 1px,
+      rgba(0,0,0,0.00) 3px,
+      rgba(0,0,0,0.00) 7px
+    );
+}
+
+/* noise + flicker */
+.crt::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  background:
+    repeating-linear-gradient(
+      90deg,
+      rgba(255,255,255,0.02) 0px,
+      rgba(255,255,255,0.02) 1px,
+      rgba(0,0,0,0.00) 2px,
+      rgba(0,0,0,0.00) 6px
+    );
+  opacity: 0.18;
+  animation: crtFlicker 4.2s infinite;
+}
+
+/* chromatic aberration / RGB split */
+.crt::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  background:
+    linear-gradient(to right,
+      rgba(255,0,90,0.10),
+      rgba(0,255,255,0.10)
+    );
+  mix-blend-mode: overlay;
+  opacity: 0.22;
+  transform: translateX(0.8px);
+}
+
+/* subtle “rolling” brightness band */
+@keyframes crtFlicker{
+  0%{opacity:.10; transform:translateY(-2%);}
+  5%{opacity:.20;}
+  12%{opacity:.12;}
+  22%{opacity:.24;}
+  45%{opacity:.14;}
+  58%{opacity:.26;}
+  72%{opacity:.12;}
+  100%{opacity:.18; transform:translateY(2%);}
+}
+
+/* Accessibility */
+@media (prefers-reduced-motion: reduce){
+  .crt::before{ animation:none; }
+}
 
 /* =========================
    TABLET FIX (portrait + landscape)
@@ -350,7 +464,14 @@ body {
    MOBILE
 ========================= */
 @media (max-width: 600px){
- 
+ .crt{ opacity: 0.42; }
+
+  .crt-wrap{
+    /* ✅ more curvature on mobile but not crazy */
+    transform: perspective(720px) translateZ(0) scale(1.03)
+               rotateX(0.95deg) rotateY(-0.95deg);
+    border-radius: 18px;
+  }
   .wave-overlay{
     height: 110px;
   }
