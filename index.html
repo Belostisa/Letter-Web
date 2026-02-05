@@ -16,7 +16,7 @@
     </video>
   </div>
 
-  <!-- AUDIO -->
+  <!-- AUDIO (loop is fine; we will handle end/stop too) -->
   <audio id="bgAudio" loop preload="auto" crossorigin="anonymous">
     <source src="media/sextape.mp3" type="audio/mpeg">
   </audio>
@@ -64,8 +64,18 @@
   </div>
 
 <script>
+/* ============================================================
+   PERFORMANCE PATCHES INCLUDED
+   ✅ Cap DPR for canvases (huge mobile win)
+   ✅ FX loop sleeps when no particles (no constant 60fps clears)
+   ✅ MAX_PARTICLES cap + click spam control (fixes lag on flower spam)
+   ✅ Smaller analyser FFT + fewer wave points
+   ✅ Stop waves + show play button when audio ends / pauses
+   ✅ Keeps typewriter + cache + autoscroll + envelope delay
+============================================================ */
+
 /* =========================
-   EMAIL PAGES (unchanged)
+   EMAIL PAGES
 ========================= */
 const pages = [
 `Алла, я думаю мне очень повезло встретить тебя. Спасибо за тепло, доверие, и все моменты, что ты могла мне дать. Мне жаль, что все складывается именно так и я не смогу показать и дать тебе всего, чего ты заслуживаешь, просто за то, что ты есть.
@@ -89,20 +99,14 @@ const pages = [
 let currentPage = 0;
 
 /* =========================
-   TYPEWRITER REVEAL (UPDATED)
-   ✅ Autoscroll while typing (mobile)
-   ✅ Saves typed progress per page:
-      - Close/open keeps what was typed
-      - Prev/Next keeps what was typed
+   TYPEWRITER REVEAL
 ========================= */
 const emailBody = document.getElementById("emailContent");
 let typingTimer = 0;
 let typingToken = 0;
-
-// cache typed progress: pageIndex -> { i, text, done }
 const typedCache = new Map();
 
-// inject cursor CSS once
+// cursor CSS once
 (function addCursorCSS(){
   if (document.getElementById("twCursorCSS")) return;
   const s = document.createElement("style");
@@ -127,35 +131,18 @@ function stopTyping(){
 }
 
 function autoScrollToCursor(){
-  // Always keep newest typing visible (good for phones)
-  // (No “near bottom” check; user asked for autoscroll with typing)
   emailBody.scrollTop = emailBody.scrollHeight;
 }
 
 function getDelayForChar(ch, prevCh){
-  let d = 40; // base
-
-  if (ch === " ") d = 16;
-  if (ch === ",") d = 140;
-  if (ch === "." || ch === "!" || ch === "?") d = 260;
-
-  // breathing pause after paragraph break
-  if (prevCh === "\n" && ch === "\n") d = 900;
-  if (ch === "\n") d = 120;
-
-  d += Math.random() * 18;
+  let d = 52;
+  if (ch === " ") d = 18;
+  if (ch === ",") d = 170;
+  if (ch === "." || ch === "!" || ch === "?") d = 340;
+  if (prevCh === "\n" && ch === "\n") d = 1050;
+  if (ch === "\n") d = 140;
+  d += Math.random() * 22;
   return d;
-}
-
-function renderInstantFromCache(pageIndex){
-  stopTyping();
-  const cached = typedCache.get(pageIndex);
-
-  // If we have full typed text, show it. If partial, show partial.
-  const shown = cached?.text ?? "";
-  emailBody.textContent = shown;
-  document.getElementById("pageIndicator").textContent = `${pageIndex + 1} / ${pages.length}`;
-  emailBody.scrollTop = 0;
 }
 
 function typewriterPage(pageIndex){
@@ -165,7 +152,6 @@ function typewriterPage(pageIndex){
   const fullText = pages[pageIndex];
   const cached = typedCache.get(pageIndex);
 
-  // If page finished typing before, show instantly (no restart)
   if (cached?.done){
     emailBody.textContent = fullText;
     document.getElementById("pageIndicator").textContent = `${pageIndex + 1} / ${pages.length}`;
@@ -173,21 +159,17 @@ function typewriterPage(pageIndex){
     return;
   }
 
-  // If partial progress exists, resume from there
   let i = cached?.i ?? 0;
   let typedText = cached?.text ?? "";
 
   emailBody.textContent = typedText;
 
-  // cursor
   const cursor = document.createElement("span");
   cursor.className = "tw-cursor";
   cursor.textContent = "▋";
   emailBody.appendChild(cursor);
 
   document.getElementById("pageIndicator").textContent = `${pageIndex + 1} / ${pages.length}`;
-
-  // start at top when opening a page
   emailBody.scrollTop = 0;
 
   let last = (typedText.length ? typedText[typedText.length - 1] : "");
@@ -196,7 +178,6 @@ function typewriterPage(pageIndex){
     if (myToken !== typingToken) return;
 
     if (i >= fullText.length){
-      // done → cache full
       typedCache.set(pageIndex, { i: fullText.length, text: fullText, done: true });
       typingTimer = setTimeout(() => {
         if (cursor.parentNode) cursor.remove();
@@ -205,8 +186,7 @@ function typewriterPage(pageIndex){
       return;
     }
 
-    // type 1–2 chars per tick
-    const burst = Math.random() < 0.15 ? 2 : 1;
+    const burst = (Math.random() < 0.08) ? 2 : 1;
     let chunk = "";
 
     for (let k = 0; k < burst && i < fullText.length; k++){
@@ -220,7 +200,6 @@ function typewriterPage(pageIndex){
     typedText += chunk;
     typedCache.set(pageIndex, { i, text: typedText, done: false });
 
-    // ✅ autoscroll during typing
     autoScrollToCursor();
 
     const nextCh = fullText[i] || "";
@@ -231,56 +210,40 @@ function typewriterPage(pageIndex){
   step();
 }
 
+function renderPage(){ typewriterPage(currentPage); }
+
 function openEmail(){
   const env = document.querySelector(".envelope");
   const overlayEl = document.getElementById("emailOverlay");
 
-  // start flap animation
   env.classList.add("open");
 
-  // wait for the flap transition to finish (your CSS is 0.9s)
   const DURATION_MS = 900;
-
-  // prevent double triggers
   if (openEmail._pending) return;
   openEmail._pending = true;
 
   setTimeout(() => {
     openEmail._pending = false;
-
     overlayEl.style.display = "flex";
-    renderPage(); // typewriter + cache + autoscroll
-  }, DURATION_MS + 60); // small buffer
+    renderPage();
+  }, DURATION_MS + 60);
 }
 
 function closeEmail(){
-  // ✅ stop typing but DO NOT clear cache
   stopTyping();
   document.querySelector(".envelope").classList.remove("open");
   document.getElementById("emailOverlay").style.display = "none";
 }
 
-function renderPage(){
-  typewriterPage(currentPage);
-}
-
 function nextPage(){
-  if (currentPage < pages.length - 1){
-    currentPage++;
-    renderPage();
-  }
+  if (currentPage < pages.length - 1){ currentPage++; renderPage(); }
 }
-
 function prevPage(){
-  if (currentPage > 0){
-    currentPage--;
-    renderPage();
-  }
+  if (currentPage > 0){ currentPage--; renderPage(); }
 }
 
 /* =========================
    WAVES + PARTICLES
-   (UNCHANGED BELOW THIS LINE)
 ========================= */
 const playBtn = document.getElementById("playWave");
 const audioEl = document.getElementById("bgAudio");
@@ -289,7 +252,7 @@ const waveCanvas  = document.getElementById("waveCanvas");
 const waveCtx     = waveCanvas.getContext("2d", { alpha: true });
 
 const flowersSection = document.querySelector(".flowers-section");
-const flowersVideo   = document.querySelector(".flowers-video"); // ✅ for tighter hit area
+const flowersVideo   = document.querySelector(".flowers-video");
 const envelopeEl     = document.querySelector(".envelope");
 
 let audioCtx = null;
@@ -310,6 +273,14 @@ function waveThickness(){
 }
 
 /* =========================
+   DPR CAP (BIG PERF WIN)
+========================= */
+function getDPR(){
+  const isMobile = window.matchMedia("(max-width: 600px)").matches;
+  return Math.min(isMobile ? 1.2 : 1.5, window.devicePixelRatio || 1);
+}
+
+/* =========================
    FULLSCREEN FX CANVAS
 ========================= */
 const fxCanvas = document.createElement("canvas");
@@ -327,7 +298,7 @@ document.body.appendChild(fxCanvas);
 const fxCtx = fxCanvas.getContext("2d", { alpha: true });
 
 function resizeFxCanvas(){
-  const dpr = Math.max(1, window.devicePixelRatio || 1);
+  const dpr = getDPR();
   fxCanvas.width = Math.floor(innerWidth * dpr);
   fxCanvas.height = Math.floor(innerHeight * dpr);
   fxCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -335,7 +306,7 @@ function resizeFxCanvas(){
 
 function resizeWaveCanvas(){
   const rect = waveCanvas.getBoundingClientRect();
-  const dpr = Math.max(1, window.devicePixelRatio || 1);
+  const dpr = getDPR();
   const w = Math.max(1, Math.floor(rect.width  * dpr));
   const h = Math.max(1, Math.floor(rect.height * dpr));
   if (waveCanvas.width !== w || waveCanvas.height !== h){
@@ -393,14 +364,14 @@ setTimeout(scheduleLayoutUpdate, 150);
 setTimeout(scheduleLayoutUpdate, 650);
 
 /* =========================
-   Audio analyser
+   Audio analyser (lighter)
 ========================= */
 function setupAnalyser(){
   if (audioCtx) return;
 
   audioCtx = new (window.AudioContext || window.webkitAudioContext)();
   analyser = audioCtx.createAnalyser();
-  analyser.fftSize = 2048;
+  analyser.fftSize = 1024;
   analyser.smoothingTimeConstant = 0.82;
 
   timeData = new Uint8Array(analyser.frequencyBinCount);
@@ -436,46 +407,78 @@ function readAudio(){
 }
 
 /* =========================
-   Particles
+   Particles (FX loop sleeps + spam protection)
 ========================= */
 const particles = [];
+const MAX_PARTICLES = 220; // ✅ hard cap (try 160–260)
+
 function rand(a, b){ return a + Math.random() * (b - a); }
 
+let fxRaf = 0;
+function ensureFxLoop(){
+  if (fxRaf) return;
+  const tick = () => {
+    if (particles.length === 0){
+      fxRaf = 0;
+      return;
+    }
+    drawParticles();
+    fxRaf = requestAnimationFrame(tick);
+  };
+  fxRaf = requestAnimationFrame(tick);
+}
+
+function clampParticles(){
+  while (particles.length > MAX_PARTICLES) particles.shift();
+}
+
 function spawnFlowerOrbs(vx, vy){
-  const count = 18;
+  const isMobile = window.matchMedia("(max-width: 600px)").matches;
+  const count = isMobile ? 8 : 14; // ✅ fewer on mobile
+
   for (let i = 0; i < count; i++){
     const angle = rand(-Math.PI * 0.80, -Math.PI * 0.20);
-    const speed = rand(0.9, 2.6);
-
+    const speed = rand(0.9, 2.4);
     particles.push({
       x: vx, y: vy,
-      vx: Math.cos(angle) * speed + rand(-0.25, 0.25),
-      vy: Math.sin(angle) * speed + rand(-0.18, 0.12),
+      vx: Math.cos(angle) * speed + rand(-0.22, 0.22),
+      vy: Math.sin(angle) * speed + rand(-0.16, 0.10),
       life: 1,
-      r: rand(0.9, 1.8),
-      w: rand(1.4, 2.8),
+      r: rand(0.9, 1.7),
+      w: rand(1.3, 2.6),
       ph: rand(0, Math.PI * 2),
       type: "orb"
     });
   }
+
+  clampParticles();
+  ensureFxLoop();
 }
 
 function spawnCyanBurst(vx, vy){
-  for (let i = 0; i < 14; i++){
+  const isMobile = window.matchMedia("(max-width: 600px)").matches;
+  const count = isMobile ? 8 : 12;
+
+  for (let i = 0; i < count; i++){
     const angle = rand(0, Math.PI * 2);
-    const speed = rand(0.7, 2.0);
+    const speed = rand(0.7, 1.8);
     particles.push({
       x: vx, y: vy,
       vx: Math.cos(angle) * speed,
       vy: Math.sin(angle) * speed,
       life: 1,
-      r: rand(1.8, 3.4),
+      r: rand(1.6, 3.0),
       type: "cyan"
     });
   }
+
+  clampParticles();
+  ensureFxLoop();
 }
 
 function drawParticles(){
+  if (particles.length === 0) return;
+
   fxCtx.clearRect(0, 0, innerWidth, innerHeight);
 
   for (let i = particles.length - 1; i >= 0; i--){
@@ -490,10 +493,11 @@ function drawParticles(){
 
     if (p.type === "orb"){
       const t = performance.now() * 0.001;
-      p.x += Math.sin(t * p.w + p.ph) * 0.28;
+      p.x += Math.sin(t * p.w + p.ph) * 0.26;
     }
 
-    p.life -= (p.type === "orb" ? 0.009 : 0.014);
+    // ✅ slightly shorter lifetime reduces “pile-up”
+    p.life -= (p.type === "orb" ? 0.012 : 0.016);
 
     if (p.life <= 0){
       particles.splice(i, 1);
@@ -508,7 +512,6 @@ function drawParticles(){
       fxCtx.fillStyle = "rgba(120,255,255,0.66)";
       fxCtx.shadowColor = "rgba(120,255,255,0.30)";
       fxCtx.shadowBlur = 10;
-
       fxCtx.beginPath();
       fxCtx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
       fxCtx.fill();
@@ -517,7 +520,7 @@ function drawParticles(){
     }
 
     const core = p.r;
-    const aura = p.r * 6.5;
+    const aura = p.r * 6.3;
 
     fxCtx.fillStyle = "rgba(255,140,210,0.10)";
     fxCtx.shadowColor = "rgba(255,140,210,0.22)";
@@ -537,7 +540,8 @@ function drawParticles(){
 }
 
 /* =========================
-   FLOWER CLICK -> ORBS (even smaller area)
+   FLOWER CLICK -> ORBS
+   ✅ dynamic cooldown when lots of particles exist
 ========================= */
 let lastFlower = 0;
 
@@ -558,25 +562,54 @@ document.addEventListener("click", (e) => {
   if (!inside) return;
 
   const now = Date.now();
-  if (now - lastFlower < 140) return;
+
+  const extraDelay = particles.length > 140 ? 220 : 0;
+  const minGap = 140 + extraDelay;
+
+  if (now - lastFlower < minGap) return;
   lastFlower = now;
 
   spawnFlowerOrbs(e.clientX, e.clientY);
 }, { passive: true });
 
 /* =========================
-   Play button dissolve (unchanged)
+   Play button show/hide logic
+========================= */
+function showPlayButton(){ playBtn.classList.remove("hidden"); }
+function hidePlayButton(){ playBtn.classList.add("hidden"); }
+
+function stopWaves(){
+  started = false;
+  overlay.classList.remove("active");
+
+  const w = waveCanvas.clientWidth;
+  const h = waveCanvas.clientHeight;
+  waveCtx.clearRect(0, 0, w, h);
+}
+
+audioEl.addEventListener("ended", () => {
+  stopWaves();
+  showPlayButton();
+});
+
+audioEl.addEventListener("pause", () => {
+  stopWaves();
+  showPlayButton();
+});
+
+/* =========================
+   Play button dissolve (particles a bit higher)
 ========================= */
 function dissolvePlayButton(){
   const r = playBtn.getBoundingClientRect();
   const cx = r.left + r.width / 2;
-  const cy = r.top + r.height / 2 - 18;
+  const cy = r.top + r.height / 2 - 28;
   spawnCyanBurst(cx, cy);
-  playBtn.classList.add("hidden");
+  hidePlayButton();
 }
 
 /* =========================
-   Waves drawing (unchanged)
+   Waves drawing
 ========================= */
 function strokeNeonBlue(drawPath, thickness = 1, glow = 1){
   waveCtx.save();
@@ -640,7 +673,7 @@ function startLoop(){
     const electric = 0.35 + 0.95 * treble;
     const centerY = h * 0.5;
 
-    const points = Math.max(240, Math.floor(w / 3));
+    const points = Math.max(160, Math.floor(w / 5));
     const dx = w / (points - 1);
 
     waveCtx.save();
@@ -720,21 +753,7 @@ function startLoop(){
 }
 
 /* =========================
-   FX render loop (runs ALWAYS, even before play)
-========================= */
-let fxRaf = 0;
-function startFxLoop(){
-  if (fxRaf) return;
-  const tick = () => {
-    fxRaf = requestAnimationFrame(tick);
-    drawParticles();
-  };
-  fxRaf = requestAnimationFrame(tick);
-}
-startFxLoop();
-
-/* =========================
-   Play click (starts waves + audio) (unchanged)
+   Play click (starts waves + audio)
 ========================= */
 playBtn.addEventListener("click", async (e) => {
   e.preventDefault();
@@ -756,14 +775,33 @@ playBtn.addEventListener("click", async (e) => {
   scheduleLayoutUpdate();
   startLoop();
 });
+
+/* =========================
+   Pause heavy work when tab hidden
+========================= */
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden){
+    stopWaves();
+    if (fxRaf){ cancelAnimationFrame(fxRaf); fxRaf = 0; }
+  } else {
+    if (!audioEl.paused) {
+      started = true;
+      overlay.classList.add("active");
+    }
+    if (particles.length) ensureFxLoop();
+  }
+});
 </script>
 
+<!-- CRT overlay stays as-is; your CSS controls intensity/curvature -->
 <div class="crt-wrap" aria-hidden="true">
   <div class="crt"></div>
 </div>
 
 </body>
 </html>
+
+
 
 
 
