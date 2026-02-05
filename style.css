@@ -62,9 +62,11 @@ body {
   opacity: 0.85;
   
   filter:
-    saturate(1.6)   /* ↑ pink intensity */
-    contrast(1.08)
-    brightness(1.05);
+    saturate(2.0)          /* richer pinks */
+    contrast(1.12)
+    brightness(1.08)
+    drop-shadow(0 0 18px rgba(255,120,200,0.35))
+    drop-shadow(0 0 36px rgba(255,120,200,0.18));
 }
 
 /* =========================
@@ -377,6 +379,7 @@ body {
     height: 170px;
   }
 }
+
 
 
 
