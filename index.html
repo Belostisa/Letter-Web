@@ -386,18 +386,10 @@ function startLoop(){
     const glowBoost = 0.75 + 0.9 * level + 0.6 * treble;
 
  const glowBoost = 0.55 + 0.6 * level + 0.4 * treble;
-
-/* main filaments */
-lensPair(0.0, 0.85, 1.0, glowBoost);
-lensPair(0.9, 0.70, 0.9, glowBoost * 0.9);
-lensPair(1.8, 0.55, 0.8, glowBoost * 0.8);
-
-/* inner fine filaments */
-lensPair(2.7, 0.40, 0.65, glowBoost * 0.7);
-lensPair(3.6, 0.30, 0.55, glowBoost * 0.6);
-
-/* faint micro strands */
-lensPair(4.5, 0.20, 0.45, glowBoost * 0.5);
+    
+lensPair(0.0, 0.90, 1.08, glowBoost);
+lensPair(1.1, 0.55, 0.95, glowBoost * 0.85);
+lensPair(2.2, 0.35, 0.82, glowBoost * 0.75);
 
     // spark flashes
     ctx.save();
@@ -442,6 +434,7 @@ playBtn.addEventListener("click", async (e) => {
 
 </body>
 </html>
+
 
 
 
