@@ -62,9 +62,9 @@ body {
   opacity: 0.85;
   
   filter:
-  saturate(1.2)   /* ↑ pink intensity */
-  contrast(1.08)
-  brightness(1.05);
+    saturate(1.6)   /* ↑ pink intensity */
+    contrast(1.08)
+    brightness(1.05);
 }
 
 /* =========================
@@ -377,6 +377,7 @@ body {
     height: 170px;
   }
 }
+
 
 
 
