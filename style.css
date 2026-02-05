@@ -62,11 +62,9 @@ body {
   opacity: 0.85;
   
   filter:
-  saturate(2.3)
-  contrast(1.15)
-  brightness(1.1)
-  drop-shadow(0 0 22px rgba(255,140,220,0.45))
-  drop-shadow(0 0 44px rgba(255,140,220,0.25));
+    saturate(1.6)   /* ↑ pink intensity */
+    contrast(1.08)
+    brightness(1.05);
 }
 
 /* =========================
@@ -109,28 +107,28 @@ body {
   position: fixed;
   left: 50%;
   top: var(--wave-y);
-  transform: translate(-50%, calc(-50% + var(--wave-lift, 0px)));
-  z-index: 51;
+  transform: translate(-50%, -50%);
+  z-index: 1;
 
-  width: var(--play-size, 44px);
-  height: var(--play-size, 44px);
+  width: var(--play-size);
+  height: var(--play-size);
   border-radius: 50%;
 
-  /* MATCHES WAVE COLOR */
-  background: rgba(120,255,255,0.12);
-  border: 1px solid rgba(120,255,255,0.85);
-  color: rgba(120,255,255,0.90);
+  background: rgba(120, 220, 255, 0.10);
+  border: 1px solid rgba(120, 220, 255, 0.70);
+  color: rgba(210, 250, 255, 0.95);
 
-  font-size: 18px;
+  font-size: clamp(16px, 2.3vw, 20px);
   cursor: pointer;
 
   box-shadow:
-    0 0 10px rgba(120,255,255,0.45),
-    0 0 22px rgba(120,255,255,0.28),
-    0 0 40px rgba(120,255,255,0.16);
+    0 0 10px rgba(120,220,255,.35),
+    0 0 22px rgba(120,220,255,.18);
 
   transition: transform .25s ease, opacity .25s ease;
 }
+
+
 
 .wave-play.hidden{
   opacity: 0;
@@ -379,6 +377,9 @@ body {
     height: 170px;
   }
 }
+
+
+
 
 
 
