@@ -59,7 +59,7 @@ body {
   width: min(70vw, 900px);
   display: block;
   mix-blend-mode: screen;
-  opacity: 0.85;
+  opacity: 0.9;
   
   filter:
     saturate(1.6)   /* ↑ pink intensity */
@@ -379,6 +379,7 @@ body {
     height: 170px;
   }
 }
+
 
 
 
