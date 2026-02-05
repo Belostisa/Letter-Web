@@ -570,7 +570,7 @@ document.addEventListener("click", (e) => {
 function dissolvePlayButton(){
   const r = playBtn.getBoundingClientRect();
   const cx = r.left + r.width / 2;
-  const cy = r.top + r.height / 2;
+  const cy = r.top + r.height / 2 - 18;
   spawnCyanBurst(cx, cy);
   playBtn.classList.add("hidden");
 }
@@ -757,6 +757,10 @@ playBtn.addEventListener("click", async (e) => {
   startLoop();
 });
 </script>
+
+<div class="crt-wrap" aria-hidden="true">
+  <div class="crt"></div>
+</div>
 
 </body>
 </html>
