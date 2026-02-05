@@ -106,10 +106,10 @@ function prevPage(){
 }
 
 /* =========================
-   WAVES (dynamic + centered)
-   Requires your CSS to center overlay on --wave-y:
-   .wave-overlay { top: var(--wave-y); transform: translateY(-50%); }
-   .wave-play    { top: var(--wave-y); transform: translate(-50%,-50%); }
+   WAVES + ROMANTIC INTERACTIONS
+   - Envelope glow reacts subtly to audio
+   - Play button dissolves into wave particles
+   - Clicking flowers spawns pink particles (works even if flowers have pointer-events: none)
 ========================= */
 const playBtn = document.getElementById("playWave");
 const audioEl = document.getElementById("bgAudio");
@@ -118,7 +118,8 @@ const canvas  = document.getElementById("waveCanvas");
 const ctx     = canvas.getContext("2d", { alpha: true });
 
 const flowersEl  = document.querySelector(".flowers-video") || document.querySelector(".flowers-section");
-const envelopeEl = document.querySelector(".envelope")      || document.querySelector(".envelope-section");
+const envelopeEl = document.querySelector(".envelope");
+const envelopeBack = document.querySelector(".envelope-back") || envelopeEl;
 
 let audioCtx = null;
 let analyser = null;
@@ -133,6 +134,11 @@ let posRaf = 0;
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 const lerp  = (a, b, t) => a + (b - a) * t;
 
+/* desktop-only thickness multiplier */
+function waveThickness(){
+  return window.matchMedia("(max-width: 600px)").matches ? 1.0 : 1.25;
+}
+
 /* --- canvas sizing (crisp) --- */
 function resizeCanvas(){
   const rect = canvas.getBoundingClientRect();
@@ -145,8 +151,7 @@ function resizeCanvas(){
     canvas.width = w;
     canvas.height = h;
   }
-
-  // draw in CSS pixels
+  // draw in CSS pixels (we scale the context)
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 }
 
@@ -157,14 +162,12 @@ function updateWavePosition(){
   const f = flowersEl.getBoundingClientRect();
   const e = envelopeEl.getBoundingClientRect();
 
-  // midpoint between flowers + envelope
   let y = (f.bottom + e.top) / 2;
 
-  // optional: bias a bit higher (tweak if needed)
+  // subtle lift (romantic composition)
   const lift = Math.min(32, window.innerHeight * 0.04);
   y -= lift;
 
-  // keep within viewport
   const pad = Math.max(48, Math.min(96, window.innerHeight * 0.08));
   y = clamp(y, pad, window.innerHeight - pad);
 
@@ -196,7 +199,7 @@ scheduleLayoutUpdate();
 setTimeout(scheduleLayoutUpdate, 150);
 setTimeout(scheduleLayoutUpdate, 650);
 
-/* --- audio analyser (ONE MediaElementSource only) --- */
+/* --- audio analyser --- */
 function setupAnalyser(){
   if (audioCtx) return;
 
@@ -240,36 +243,36 @@ function readAudio(){
   return { level: rmsSmooth, treble: trebleSmooth };
 }
 
-/* --- neon stroke (variable thickness/glow) --- */
+/* --- wave stroke (icy cyan) --- */
 function strokeNeonBlue(drawPath, thickness = 1, glow = 1){
   ctx.save();
   ctx.globalCompositeOperation = "lighter";
   ctx.lineCap = "round";
 
-  /* outer glow (soft aqua haze) */
-  ctx.shadowColor = "rgba(90,245,255,0.10)";
-  ctx.shadowBlur  = 14 * glow;
-  ctx.lineWidth   = 4.2 * thickness;
-  ctx.strokeStyle = "rgba(90,245,255,0.08)";
+  // outer haze
+  ctx.shadowColor = "rgba(90,245,255,0.08)";
+  ctx.shadowBlur  = 11 * glow;
+  ctx.lineWidth   = 3.4 * thickness;
+  ctx.strokeStyle = "rgba(90,245,255,0.07)";
   drawPath(); ctx.stroke();
 
-  /* mid glow (strong cyan saturation) */
-  ctx.shadowColor = "rgba(90,245,255,0.26)";
-  ctx.shadowBlur  = 8 * glow;
-  ctx.lineWidth   = 2.6 * thickness;
-  ctx.strokeStyle = "rgba(90,245,255,0.22)";
+  // mid glow
+  ctx.shadowColor = "rgba(90,245,255,0.20)";
+  ctx.shadowBlur  = 6.5 * glow;
+  ctx.lineWidth   = 2.1 * thickness;
+  ctx.strokeStyle = "rgba(90,245,255,0.18)";
   drawPath(); ctx.stroke();
 
-  /* core line (pure cyan, not white) */
+  // core line
   ctx.shadowBlur  = 0;
-  ctx.lineWidth   = 1.2 * thickness;
-  ctx.strokeStyle = "rgba(120,255,255,0.85)";
+  ctx.lineWidth   = 1.05 * thickness;
+  ctx.strokeStyle = "rgba(120,255,255,0.82)";
   drawPath(); ctx.stroke();
 
   ctx.restore();
 }
 
-function envelope(u){
+function envelopeShape(u){
   return Math.pow(Math.sin(Math.PI * u), 1.45);
 }
 
@@ -288,7 +291,139 @@ function travelingPulse(u, t, speed = 0.18, width = 0.06){
   return Math.exp(-(d * d) / (width * width));
 }
 
-/* --- dynamic “lens” waves loop --- */
+/* =========================
+   Romantic particles
+========================= */
+const particles = [];
+
+function spawnFlowerParticles(cx, cy){
+  for (let i = 0; i < 18; i++){
+    particles.push({
+      x: cx,
+      y: cy,
+      vx: (Math.random() - 0.5) * 0.55,
+      vy: -Math.random() * 0.85,
+      life: 1,
+      size: 2.5 + Math.random() * 4.5,
+      type: "pink"
+    });
+  }
+}
+
+function spawnWaveParticles(cx, cy){
+  for (let i = 0; i < 14; i++){
+    particles.push({
+      x: cx,
+      y: cy,
+      vx: (Math.random() - 0.5) * 1.2,
+      vy: (Math.random() - 0.5) * 1.2,
+      life: 1,
+      size: 2 + Math.random() * 3,
+      type: "cyan"
+    });
+  }
+}
+
+function drawParticles(){
+  for (let i = particles.length - 1; i >= 0; i--){
+    const p = particles[i];
+
+    // motion (gentle drift)
+    p.x += p.vx;
+    p.y += p.vy;
+
+    // soft slow-down
+    p.vx *= 0.992;
+    p.vy *= 0.992;
+
+    // fade
+    p.life -= 0.014;
+
+    if (p.life <= 0){
+      particles.splice(i, 1);
+      continue;
+    }
+
+    ctx.save();
+    ctx.globalCompositeOperation = "lighter";
+    ctx.globalAlpha = p.life;
+
+    if (p.type === "cyan"){
+      ctx.fillStyle = "rgba(120,255,255,0.70)";
+      ctx.shadowColor = "rgba(120,255,255,0.35)";
+      ctx.shadowBlur = 10;
+    } else {
+      ctx.fillStyle = "rgba(255,140,210,0.70)";
+      ctx.shadowColor = "rgba(255,140,210,0.35)";
+      ctx.shadowBlur = 14;
+    }
+
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+}
+
+/* Convert viewport coords -> canvas (CSS pixel) coords */
+function viewportToCanvasXY(vx, vy){
+  const rect = canvas.getBoundingClientRect();
+  return { x: vx - rect.left, y: vy - rect.top };
+}
+
+/* =========================
+   Envelope glow reacts to audio
+========================= */
+function updateEnvelopeGlow(level){
+  if (!envelopeBack) return;
+
+  const a = 0.18 + level * 0.55;
+  const b1 = 6 + level * 16;
+  const b2 = 16 + level * 30;
+
+  envelopeBack.style.boxShadow = `
+    0 0 ${b1}px rgba(0,255,136,${a}),
+    0 0 ${b2}px rgba(0,255,136,${a * 0.45})
+  `;
+}
+
+/* =========================
+   Flower click (works even if flowers have pointer-events:none)
+========================= */
+let lastFlowerClick = 0;
+document.addEventListener("click", (e) => {
+  if (!flowersEl) return;
+
+  // ignore clicks on envelope/email UI
+  if (e.target.closest(".envelope") || e.target.closest(".email-overlay")) return;
+
+  const f = flowersEl.getBoundingClientRect();
+  const inside = (e.clientX >= f.left && e.clientX <= f.right && e.clientY >= f.top && e.clientY <= f.bottom);
+  if (!inside) return;
+
+  const now = Date.now();
+  if (now - lastFlowerClick < 220) return; // prevent spam
+  lastFlowerClick = now;
+
+  const { x, y } = viewportToCanvasXY(e.clientX, e.clientY);
+  spawnFlowerParticles(x, y);
+}, { passive: true });
+
+/* =========================
+   Play button dissolve
+========================= */
+function dissolvePlayButton(){
+  const r = playBtn.getBoundingClientRect();
+  const cx = r.left + r.width / 2;
+  const cy = r.top + r.height / 2;
+  const { x, y } = viewportToCanvasXY(cx, cy);
+  spawnWaveParticles(x, y);
+  playBtn.classList.add("hidden");
+}
+
+/* =========================
+   Waves loop (lens style)
+========================= */
 function startLoop(){
   if (rafId) return;
 
@@ -304,6 +439,11 @@ function startLoop(){
     const { level, treble } = readAudio();
     const t = now / 1000;
 
+    // envelope reacts to audio (romantic breathing)
+    updateEnvelopeGlow(level);
+
+    const thickMul = waveThickness();
+
     const baseAmp = 6;
     const maxAmp  = 90;
     const ampPx   = baseAmp + maxAmp * Math.pow(level, 0.80);
@@ -311,14 +451,14 @@ function startLoop(){
     const electric = 0.35 + 0.95 * treble;
 
     const centerY = h * 0.5;
-    const points = Math.max(240, Math.floor(w / 3)); // responsive perf
+    const points = Math.max(240, Math.floor(w / 3));
     const dx = w / (points - 1);
 
     // subtle center bar
     ctx.save();
     ctx.globalCompositeOperation = "lighter";
-    ctx.globalAlpha = 0.08 + 0.28 * level;
-    ctx.fillStyle = "rgba(120,220,255,0.18)";
+    ctx.globalAlpha = 0.07 + 0.22 * level;
+    ctx.fillStyle = "rgba(90,245,255,0.16)";
     ctx.fillRect(0, centerY - 1, w, 2);
     ctx.restore();
 
@@ -336,7 +476,7 @@ function startLoop(){
       const wobble = fbm(u, t * electric, 1.0) * 0.55;
       const micro  = Math.sin(t * (12.0 * electric) + u * (140 * electric)) * 0.12;
 
-      const env = envelope(u);
+      const env = envelopeShape(u);
 
       disp[i] =
         env * (
@@ -377,38 +517,43 @@ function startLoop(){
         }
       };
 
-      strokeNeonBlue(upperPath, thickness, glow);
-      strokeNeonBlue(lowerPath, thickness, glow);
+      strokeNeonBlue(upperPath, thickness * thickMul, glow);
+      strokeNeonBlue(lowerPath, thickness * thickMul, glow);
 
       ctx.restore();
     }
 
-    const glowBoost = 0.75 + 0.9 * level + 0.6 * treble;
+    const glowBoost = 0.72 + 0.85 * level + 0.55 * treble;
 
-    lensPair(0.0, 0.90, 1.08, glowBoost);          // main
-    lensPair(1.1, 0.55, 0.95, glowBoost * 0.85);   // inner
-    lensPair(2.2, 0.35, 0.82, glowBoost * 0.75);   // faint inner
+    lensPair(0.0, 0.90, 1.08, glowBoost);
+    lensPair(1.1, 0.55, 0.95, glowBoost * 0.85);
+    lensPair(2.2, 0.35, 0.82, glowBoost * 0.75);
 
-    // spark flashes
+    // spark motes (subtle)
     ctx.save();
     ctx.globalCompositeOperation = "lighter";
-    ctx.globalAlpha = 0.08 + 0.22 * treble;
-    ctx.fillStyle = "rgba(210,250,255,0.55)";
-    for (let k = 0; k < 5; k++){
-      const u = ((t * (0.15 + 0.05 * k)) + k * 0.17) % 1;
+    ctx.globalAlpha = 0.05 + 0.14 * treble;
+    ctx.fillStyle = "rgba(120,255,255,0.50)";
+    for (let k = 0; k < 4; k++){
+      const u = ((t * (0.12 + 0.04 * k)) + k * 0.19) % 1;
       const x = u * w;
-      const r = 1.0 + 6.0 * treble;
+      const r = 0.8 + 4.5 * treble;
       ctx.beginPath();
       ctx.arc(x, centerY, r, 0, Math.PI * 2);
       ctx.fill();
     }
     ctx.restore();
+
+    // particles render on top (romantic clicks + dissolve)
+    drawParticles();
   };
 
   rafId = requestAnimationFrame(loop);
 }
 
-/* --- play click --- */
+/* =========================
+   Play click
+========================= */
 playBtn.addEventListener("click", async (e) => {
   e.preventDefault();
   e.stopPropagation();
@@ -423,15 +568,19 @@ playBtn.addEventListener("click", async (e) => {
 
   started = true;
   overlay.classList.add("active");
-  playBtn.classList.add("hidden");
+
+  // dissolve into the wave space
+  dissolvePlayButton();
 
   scheduleLayoutUpdate();
   startLoop();
 });
+
 </script>
 
 </body>
 </html>
+
 
 
 
