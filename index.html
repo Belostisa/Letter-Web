@@ -246,23 +246,23 @@ function strokeNeonBlue(drawPath, thickness = 1, glow = 1){
   ctx.globalCompositeOperation = "lighter";
   ctx.lineCap = "round";
 
-  /* outer glow (soft aqua haze) */
-  ctx.shadowColor = "rgba(90,245,255,0.10)";
-  ctx.shadowBlur  = 14 * glow;
-  ctx.lineWidth   = 4.2 * thickness;
-  ctx.strokeStyle = "rgba(90,245,255,0.08)";
-  drawPath(); ctx.stroke();
-
-  /* mid glow (strong cyan saturation) */
-  ctx.shadowColor = "rgba(90,245,255,0.26)";
-  ctx.shadowBlur  = 8 * glow;
+  /* faint outer haze */
+  ctx.shadowColor = "rgba(90,245,255,0.08)";
+  ctx.shadowBlur  = 10 * glow;
   ctx.lineWidth   = 2.6 * thickness;
-  ctx.strokeStyle = "rgba(90,245,255,0.22)";
+  ctx.strokeStyle = "rgba(90,245,255,0.06)";
   drawPath(); ctx.stroke();
 
-  /* core line (pure cyan, not white) */
+  /* mid glow */
+  ctx.shadowColor = "rgba(90,245,255,0.18)";
+  ctx.shadowBlur  = 6 * glow;
+  ctx.lineWidth   = 1.6 * thickness;
+  ctx.strokeStyle = "rgba(90,245,255,0.16)";
+  drawPath(); ctx.stroke();
+
+  /* core filament */
   ctx.shadowBlur  = 0;
-  ctx.lineWidth   = 1.2 * thickness;
+  ctx.lineWidth   = 0.85 * thickness;
   ctx.strokeStyle = "rgba(120,255,255,0.85)";
   drawPath(); ctx.stroke();
 
@@ -385,9 +385,19 @@ function startLoop(){
 
     const glowBoost = 0.75 + 0.9 * level + 0.6 * treble;
 
-    lensPair(0.0, 0.90, 1.08, glowBoost);          // main
-    lensPair(1.1, 0.55, 0.95, glowBoost * 0.85);   // inner
-    lensPair(2.2, 0.35, 0.82, glowBoost * 0.75);   // faint inner
+ const glowBoost = 0.55 + 0.6 * level + 0.4 * treble;
+
+/* main filaments */
+lensPair(0.0, 0.85, 1.0, glowBoost);
+lensPair(0.9, 0.70, 0.9, glowBoost * 0.9);
+lensPair(1.8, 0.55, 0.8, glowBoost * 0.8);
+
+/* inner fine filaments */
+lensPair(2.7, 0.40, 0.65, glowBoost * 0.7);
+lensPair(3.6, 0.30, 0.55, glowBoost * 0.6);
+
+/* faint micro strands */
+lensPair(4.5, 0.20, 0.45, glowBoost * 0.5);
 
     // spark flashes
     ctx.save();
@@ -432,6 +442,7 @@ playBtn.addEventListener("click", async (e) => {
 
 </body>
 </html>
+
 
 
 
