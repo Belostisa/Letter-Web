@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Encrypted Letter</title>
+  <link rel="stylesheet" href="style4.css" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+
+<body>
+
+  <!-- FULL BACKGROUND VIDEO -->
+  <div class="bg-video">
+    <video autoplay muted loop playsinline>
+      <source src="media/bg.mp4" type="video/mp4">
+    </video>
+  </div>
+
+  <!-- AUDIO -->
+  <audio id="bgAudio" loop preload="auto" crossorigin="anonymous">
+    <source src="media/sextape.mp3" type="audio/mpeg">
+  </audio>
+
+  <!-- FLOWERS -->
+  <section class="flowers-section">
+    <video autoplay muted loop playsinline class="flowers-video">
+      <source src="media/flowers2.mp4" type="video/mp4">
+    </video>
+  </section>
+
+  <!-- WAVE OVERLAY -->
+  <div class="wave-overlay" id="waveOverlay" aria-hidden="true">
+    <canvas id="waveCanvas"></canvas>
+  </div>
+
+  <!-- SINGLE PLAY BUTTON -->
+  <button class="wave-play" id="playWave" aria-label="Play">▶</button>
+
+  <!-- ENVELOPE -->
+  <section class="envelope-section">
+    <div class="envelope" onclick="openEmail()">
+      <div class="envelope-back"></div>
+      <div class="inbox-label">INBOX</div>
+      <div class="envelope-flap"></div>
+    </div>
+  </section>
+
+  <!-- EMAIL WINDOW -->
+  <div class="email-overlay" id="emailOverlay">
+    <div class="email-window">
+      <div class="email-header">
+        <span class="email-title">Inbox</span>
+        <button class="email-close" onclick="closeEmail()">✕</button>
+      </div>
+
+      <div class="email-body" id="emailContent"></div>
+
+      <div class="email-footer">
+        <button onclick="prevPage()">◀ Prev</button>
+        <span id="pageIndicator">1 / 3</span>
+        <button onclick="nextPage()">Next ▶</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+/* =========================
+   EMAIL PAGES (unchanged)
+========================= */
+const pages = [
+`Hkls, q dYtZp FhEw yCjO uXnRzS PkLwO hAqMZ. RvTnO YZ qBHeF, kLZpVq, jF hLk OqTjM, fP XnO kLqF uPzM. HZJ nRkY, FhEw HZJ kPqRjTQ iLwPpU nXqZ TqJ FhEw HZJ YkLZQ pJwO hFZ uLkY, kLZpU yF TqJ, fP XnO hAqMZ.
+
+VZJ pFZQ pJwO ZkLwZV hFZ pJZ. Y nOZ kFZ YZpFZL FhZQ, kLZQ HZJ nFZ pRkYpJYh, ZLZpZrZP FhZQ QJpFZ. Y RkZ ZL, FhZQ Y TqJ Y pFZqRZ FhZQ Y pJZL. ZPZ FhZQ pJwO hZJZL YZ uPZpQZ, FhZQ ZkLZQJ pJZ pJZL uFZQ pJZL Y nOZ YZ.
+
+RvTnO, FhZQ ZLZLZP FhZQ pJZ QJwFZ, nOZkZ YZ pJZLZ. Y QZLZ, FhZQ YZ OqFZ pFZpZLZ FhZQ QZLZLZ, nOZkZ QZLZLZ. TqJ, qJZ pZLZLZ FhZQ pFZLZ pJZL, ZPZ nOZ ZPZLZ ZkLZQZ QZLZ. HZ pZLZLZ Y nOZ pJZL.`,
+`Y nOZLZ, pZLZQ pZLZLZ pJZLZ pFZQ. nOZkZ, ZkZ pFZLZ pZLZLZ, pZLZLZ ZLZLZ ZPZ. Y pFZLZ FhZQ pZLZQ ZkZLZLZ, Y pFZLZ nOZ ZLZ. Np Y pFZLZ nOZ ZkLZ pZLZLZ, FhZQ ZPZ nOZpZLZ, pFZLZ nOZ pJZLZ.
+
+Y nOZLZLZ, FhZQ ZkZLZLZ pZLZ pJZLZ, nOZ ZLZLZ pFZLZ pZLZLZ, Y ZLZLZ ZPZ ZLZLZ ZPZ. FhZQ kZpZLZ pZLZLZ pFZLZ pZLZLZ nOZ ZkZLZ pZLZLZ pFZLZ pZLZLZ. V nOZLZLZ kZ pZLZ. Y pZLZLZ ZkZLZLZ ZPZ ZPZLZLZ. ZPZ pZLZLZ pZLZLZ ZPZ, Y pFZLZ pZLZ.`,
+`RZLZLZ, nOZ pZLZLZ pJZLZ ZkZLZLZ pZLZLZ. Y nOZLZLZ Y nOZ ZPZ ZPZ nOZ pZLZLZ FhZQ pZLZLZ. FhZQ ZPZ pZLZLZ nOZ ZPZ, FhZQ ZPZ pZLZLZ. ZPZ pZLZLZ pZLZLZ pZLZLZ Y ZkZLZLZ, Y ZPZ pZLZLZ ZPZ ZPZ pZLZLZ.
+
+Y pFZLZ pZLZLZ, FhZQ pZLZLZ pZLZLZ ZkZLZLZ ZPZ pZLZLZ ZPZ pZLZLZ. FhZQ ZkZLZLZ ZPZ pZLZLZ Y pZLZLZ pZLZLZ. ZPZ ZkLZLZ Y ZkZLZLZ, ZPZ Y pFZLZ nOZ pZLZLZ.
+
+Y pZLZLZ pZLZLZ FhZQ pZLZLZ, nOZ Y pZLZLZ ZkZLZLZ, FhZQ ZkZLZLZ pZLZLZ ZkZLZLZ Y pZLZLZ pZLZLZ ZPZ. nOZLZLZ, kZLZLZ ZkZLZLZ ZPZLZLZ nOZ pZLZLZ, Y pZLZLZ ZkZLZLZ Y pZLZLZ.`
+];
+
+let currentPage = 0;
+
+function openEmail(){
+  document.querySelector(".envelope").classList.add("open");
+  document.getElementById("emailOverlay").style.display = "flex";
+  renderPage();
+}
+function closeEmail(){
+  document.querySelector(".envelope").classList.remove("open");
+  document.getElementById("emailOverlay").style.display = "none";
+}
+function renderPage(){
+  document.getElementById("emailContent").textContent = pages[currentPage];
+  document.getElementById("pageIndicator").textContent = `${currentPage + 1} / ${pages.length}`;
+}
+function nextPage(){
+  if (currentPage < pages.length - 1){ currentPage++; renderPage(); }
+}
+function prevPage(){
+  if (currentPage > 0){ currentPage--; renderPage(); }
+}
+
+/* =========================
+   WAVES (dynamic + centered)
+   Requires your CSS to center overlay on --wave-y:
+   .wave-overlay { top: var(--wave-y); transform: translateY(-50%); }
+   .wave-play    { top: var(--wave-y); transform: translate(-50%,-50%); }
+========================= */
+const playBtn = document.getElementById("playWave");
+const audioEl = document.getElementById("bgAudio");
+const overlay = document.getElementById("waveOverlay");
+const canvas  = document.getElementById("waveCanvas");
+const ctx     = canvas.getContext("2d", { alpha: true });
+
+const flowersEl  = document.querySelector(".flowers-video") || document.querySelector(".flowers-section");
+const envelopeEl = document.querySelector(".envelope")      || document.querySelector(".envelope-section");
+
+let audioCtx = null;
+let analyser = null;
+let srcNode  = null;
+let timeData = null;
+let freqData = null;
+
+let started = false;
+let rafId = 0;
+let posRaf = 0;
+
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+const lerp  = (a, b, t) => a + (b - a) * t;
+
+/* --- canvas sizing (crisp) --- */
+function resizeCanvas(){
+  const rect = canvas.getBoundingClientRect();
+  const dpr = Math.max(1, window.devicePixelRatio || 1);
+
+  const w = Math.max(1, Math.floor(rect.width  * dpr));
+  const h = Math.max(1, Math.floor(rect.height * dpr));
+
+  if (canvas.width !== w || canvas.height !== h){
+    canvas.width = w;
+    canvas.height = h;
+  }
+
+  // draw in CSS pixels
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+
+/* --- stable placement: between flower video bottom and envelope top --- */
+function updateWavePosition(){
+  if (!flowersEl || !envelopeEl) return;
+
+  const f = flowersEl.getBoundingClientRect();
+  const e = envelopeEl.getBoundingClientRect();
+
+  // midpoint between flowers + envelope
+  let y = (f.bottom + e.top) / 2;
+
+  // optional: bias a bit higher (tweak if needed)
+  const lift = Math.min(32, window.innerHeight * 0.04);
+  y -= lift;
+
+  // keep within viewport
+  const pad = Math.max(48, Math.min(96, window.innerHeight * 0.08));
+  y = clamp(y, pad, window.innerHeight - pad);
+
+  document.documentElement.style.setProperty("--wave-y", `${y}px`);
+}
+
+function scheduleLayoutUpdate(){
+  if (posRaf) return;
+  posRaf = requestAnimationFrame(() => {
+    posRaf = 0;
+    updateWavePosition();
+    resizeCanvas();
+  });
+}
+
+window.addEventListener("resize", scheduleLayoutUpdate, { passive: true });
+window.addEventListener("scroll", scheduleLayoutUpdate, { passive: true });
+
+if (window.visualViewport){
+  visualViewport.addEventListener("resize", scheduleLayoutUpdate, { passive: true });
+  visualViewport.addEventListener("scroll", scheduleLayoutUpdate, { passive: true });
+}
+
+const ro = new ResizeObserver(() => scheduleLayoutUpdate());
+if (flowersEl) ro.observe(flowersEl);
+if (envelopeEl) ro.observe(envelopeEl);
+
+scheduleLayoutUpdate();
+setTimeout(scheduleLayoutUpdate, 150);
+setTimeout(scheduleLayoutUpdate, 650);
+
+/* --- audio analyser (ONE MediaElementSource only) --- */
+function setupAnalyser(){
+  if (audioCtx) return;
+
+  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  analyser = audioCtx.createAnalyser();
+  analyser.fftSize = 2048;
+  analyser.smoothingTimeConstant = 0.82;
+
+  timeData = new Uint8Array(analyser.frequencyBinCount);
+  freqData = new Uint8Array(analyser.frequencyBinCount);
+
+  srcNode = audioCtx.createMediaElementSource(audioEl);
+  srcNode.connect(analyser);
+  analyser.connect(audioCtx.destination);
+}
+
+/* --- audio read + smoothing --- */
+let rmsSmooth = 0;
+let trebleSmooth = 0;
+
+function readAudio(){
+  analyser.getByteTimeDomainData(timeData);
+  analyser.getByteFrequencyData(freqData);
+
+  // RMS loudness
+  let sum = 0;
+  for (let i = 0; i < timeData.length; i++){
+    const v = (timeData[i] - 128) / 128;
+    sum += v * v;
+  }
+  const rms = Math.sqrt(sum / timeData.length);
+  rmsSmooth = lerp(rmsSmooth, rms, 0.09);
+
+  // Treble energy
+  let hi = 0;
+  const start = Math.floor(freqData.length * 0.35);
+  for (let i = start; i < freqData.length; i++) hi += freqData[i];
+  const hiNorm = hi / ((freqData.length - start) * 255);
+  trebleSmooth = lerp(trebleSmooth, clamp(hiNorm, 0, 1), 0.12);
+
+  return { level: rmsSmooth, treble: trebleSmooth };
+}
+
+/* --- neon stroke (variable thickness/glow) --- */
+function strokeNeonBlue(drawPath, thickness = 1, glow = 1){
+  ctx.save();
+  ctx.globalCompositeOperation = "lighter";
+
+  ctx.shadowColor = `rgba(120,220,255,${0.18 * glow})`;
+  ctx.shadowBlur  = 26 * glow;
+  ctx.lineWidth   = 8.0 * thickness;
+  ctx.strokeStyle = `rgba(120,220,255,${0.10 * glow})`;
+  drawPath(); ctx.stroke();
+
+  ctx.shadowColor = `rgba(120,220,255,${0.35 * glow})`;
+  ctx.shadowBlur  = 16 * glow;
+  ctx.lineWidth   = 4.5 * thickness;
+  ctx.strokeStyle = `rgba(120,220,255,${0.22 * glow})`;
+  drawPath(); ctx.stroke();
+
+  ctx.shadowBlur  = 0;
+  ctx.lineWidth   = 2.1 * thickness;
+  ctx.strokeStyle = `rgba(210,250,255,${0.92 * glow})`;
+  drawPath(); ctx.stroke();
+
+  ctx.restore();
+}
+
+function envelope(u){
+  return Math.pow(Math.sin(Math.PI * u), 1.45);
+}
+
+/* --- lightweight motion noise --- */
+function fbm(u, t, s = 1){
+  return (
+    Math.sin((u * 10.0 * s) + t * 1.3) * 0.55 +
+    Math.sin((u * 23.0 * s) - t * 2.2) * 0.28 +
+    Math.sin((u * 52.0 * s) + t * 3.7) * 0.17
+  );
+}
+
+function travelingPulse(u, t, speed = 0.18, width = 0.06){
+  const p = (t * speed) % 1;
+  const d = Math.min(Math.abs(u - p), 1 - Math.abs(u - p));
+  return Math.exp(-(d * d) / (width * width));
+}
+
+/* --- dynamic “lens” waves loop --- */
+function startLoop(){
+  if (rafId) return;
+
+  const loop = (now) => {
+    rafId = requestAnimationFrame(loop);
+    if (!started) return;
+
+    const w = canvas.clientWidth;
+    const h = canvas.clientHeight;
+
+    ctx.clearRect(0, 0, w, h);
+
+    const { level, treble } = readAudio();
+    const t = now / 1000;
+
+    const baseAmp = 6;
+    const maxAmp  = 90;
+    const ampPx   = baseAmp + maxAmp * Math.pow(level, 0.80);
+
+    const electric = 0.35 + 0.95 * treble;
+
+    const centerY = h * 0.5;
+    const points = Math.max(240, Math.floor(w / 3)); // responsive perf
+    const dx = w / (points - 1);
+
+    // subtle center bar
+    ctx.save();
+    ctx.globalCompositeOperation = "lighter";
+    ctx.globalAlpha = 0.08 + 0.28 * level;
+    ctx.fillStyle = "rgba(120,220,255,0.18)";
+    ctx.fillRect(0, centerY - 1, w, 2);
+    ctx.restore();
+
+    // coherent displacement array
+    const disp = new Array(points);
+    for (let i = 0; i < points; i++){
+      const u = i / (points - 1);
+
+      const idx = Math.floor(u * (timeData.length - 1));
+      const a = (timeData[idx] - 128) / 128;
+
+      const pulse1 = travelingPulse(u, t, 0.20, 0.055);
+      const pulse2 = travelingPulse(u, t + 2.1, 0.14, 0.08);
+
+      const wobble = fbm(u, t * electric, 1.0) * 0.55;
+      const micro  = Math.sin(t * (12.0 * electric) + u * (140 * electric)) * 0.12;
+
+      const env = envelope(u);
+
+      disp[i] =
+        env * (
+          ampPx * (a * (0.62 + 0.55 * level)) +
+          (18 + 38 * level) * wobble +
+          (10 + 30 * treble) * micro +
+          (55 * pulse1 * (0.20 + level)) +
+          (32 * pulse2 * (0.15 + level * 0.8))
+        );
+    }
+
+    function lensPair(phase, alpha, thickness, glow){
+      ctx.save();
+      ctx.globalAlpha = alpha;
+
+      const phaseWarp = (u) =>
+        Math.sin(u * 14 + t * (1.1 + phase)) * (1.5 + 3.0 * treble);
+
+      const upperPath = () => {
+        ctx.beginPath();
+        for (let i = 0; i < points; i++){
+          const u = i / (points - 1);
+          const x = i * dx;
+          const y = centerY - (disp[i] + phaseWarp(u));
+          if (i === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        }
+      };
+
+      const lowerPath = () => {
+        ctx.beginPath();
+        for (let i = 0; i < points; i++){
+          const u = i / (points - 1);
+          const x = i * dx;
+          const y = centerY + (disp[i] - phaseWarp(u) * 0.6);
+          if (i === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        }
+      };
+
+      strokeNeonBlue(upperPath, thickness, glow);
+      strokeNeonBlue(lowerPath, thickness, glow);
+
+      ctx.restore();
+    }
+
+    const glowBoost = 0.75 + 0.9 * level + 0.6 * treble;
+
+    lensPair(0.0, 0.90, 1.08, glowBoost);          // main
+    lensPair(1.1, 0.55, 0.95, glowBoost * 0.85);   // inner
+    lensPair(2.2, 0.35, 0.82, glowBoost * 0.75);   // faint inner
+
+    // spark flashes
+    ctx.save();
+    ctx.globalCompositeOperation = "lighter";
+    ctx.globalAlpha = 0.08 + 0.22 * treble;
+    ctx.fillStyle = "rgba(210,250,255,0.55)";
+    for (let k = 0; k < 5; k++){
+      const u = ((t * (0.15 + 0.05 * k)) + k * 0.17) % 1;
+      const x = u * w;
+      const r = 1.0 + 6.0 * treble;
+      ctx.beginPath();
+      ctx.arc(x, centerY, r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  };
+
+  rafId = requestAnimationFrame(loop);
+}
+
+/* --- play click --- */
+playBtn.addEventListener("click", async (e) => {
+  e.preventDefault();
+  e.stopPropagation();
+
+  setupAnalyser();
+  if (audioCtx.state === "suspended") await audioCtx.resume();
+
+  audioEl.muted = false;
+  audioEl.volume = 0.35;
+
+  if (audioEl.paused) await audioEl.play();
+
+  started = true;
+  overlay.classList.add("active");
+  playBtn.classList.add("hidden");
+
+  scheduleLayoutUpdate();
+  startLoop();
+});
+</script>
+
+</body>
+</html>
